@@ -1,7 +1,7 @@
 {
   "name": "mr-upwork-bot-mobile",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -9,10 +9,25 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
+    "@gorhom/bottom-sheet": "^5.2.10",
+    "@shopify/flash-list": "^2.3.1",
+    "axios": "^1.15.2",
     "expo": "~54.0.33",
+    "expo-clipboard": "^55.0.13",
+    "expo-router": "^55.0.13",
+    "expo-secure-store": "^55.0.13",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native": "0.81.5",
+    "react-native-chart-kit": "^6.12.1",
+    "react-native-gesture-handler": "^2.31.1",
+    "react-native-reanimated": "^4.3.0",
+    "react-native-safe-area-context": "^5.7.0",
+    "react-native-screens": "^4.24.0",
+    "react-native-svg": "^15.15.4",
+    "socket.io-client": "^4.8.3",
+    "zustand": "^5.0.12"
   },
   "private": true
 }
