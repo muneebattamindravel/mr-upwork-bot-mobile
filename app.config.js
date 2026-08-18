@@ -9,7 +9,7 @@ export default ({ config }) => ({
   splash: {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',
-    backgroundColor: '#14532d',
+    backgroundColor: '#7e22ce',
   },
   ios: {
     supportsTablet: true,
@@ -18,7 +18,7 @@ export default ({ config }) => ({
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#14532d',
+      backgroundColor: '#7e22ce',
     },
     package: 'com.mindravel.mrupworkbot',
   },
@@ -29,12 +29,6 @@ export default ({ config }) => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
-    [
-      'expo-clipboard',
-      {
-        requestPermission: false,
-      },
-    ],
   ],
   extra: {
     apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000',

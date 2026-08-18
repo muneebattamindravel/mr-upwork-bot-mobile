@@ -13,28 +13,31 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useAuth from '../hooks/useAuth';
-import { COLORS } from '../constants/config';
+import { COLORS, API_BASE_URL, API_PREFIX } from '../constants/config';
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter your email and password.');
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter your username and password.');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      await login(email.trim().toLowerCase(), password);
+      console.log('[Login] Calling:', `${API_BASE_URL}${API_PREFIX}/auth/login`);
+      await login(username.trim(), password);
     } catch (err) {
+      console.log('[Login] Error:', JSON.stringify(err?.response?.data || err?.message));
       const msg =
         err?.response?.data?.message ||
+        err?.message ||
         'Login failed. Please check your credentials.';
       setError(msg);
     } finally {
@@ -73,16 +76,15 @@ export default function LoginScreen() {
             ) : null}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>Username</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={18} color={COLORS.muted} style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={18} color={COLORS.muted} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="you@example.com"
+                  placeholder="your username"
                   placeholderTextColor={COLORS.muted}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
+                  value={username}
+                  onChangeText={setUsername}
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!loading}
@@ -158,10 +160,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-    shadowColor: COLORS.primary,
+    shadowColor: COLORS.primaryDark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 6,
   },
   appName: {

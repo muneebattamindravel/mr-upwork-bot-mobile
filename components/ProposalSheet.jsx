@@ -1,4 +1,4 @@
-import React, { forwardRef, useMemo, useState } from 'react';
+import React, { forwardRef, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  ScrollView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Clipboard from 'expo-clipboard';
@@ -20,13 +22,26 @@ const TYPES = [
   { label: 'Detailed', value: 'detailed' },
 ];
 
-const ProposalSheet = forwardRef(({ jobId, initialProposal }, ref) => {
-  const snapPoints = useMemo(() => ['70%', '90%'], []);
+const ProposalSheet = forwardRef(({ jobId, initialProposal, onProposalChange }, ref) => {
+  const snapPoints = useMemo(() => ['70%', '95%'], []);
   const [selectedType, setSelectedType] = useState('medium');
   const [proposal, setProposal] = useState(initialProposal || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Keep local state in sync if parent's initial proposal changes (eg. job reload)
+  useEffect(() => {
+    if (initialProposal != null && initialProposal !== proposal) {
+      setProposal(initialProposal);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProposal]);
+
+  const updateProposal = (text) => {
+    setProposal(text);
+    onProposalChange?.(text);
+  };
 
   const handleGenerate = async () => {
     if (!jobId) return;
@@ -34,9 +49,16 @@ const ProposalSheet = forwardRef(({ jobId, initialProposal }, ref) => {
     setError('');
     try {
       const data = await generateProposal(jobId, selectedType);
-      setProposal(data.proposal || '');
+      const text = typeof data === 'string' ? data : data?.proposal || '';
+      updateProposal(text);
     } catch (err) {
-      const msg = err?.response?.data?.message || 'Failed to generate proposal. Please try again.';
+      const apiMsg = err?.response?.data?.message || '';
+      let msg = apiMsg || 'Failed to generate proposal. Please try again.';
+      if (apiMsg.includes('429') || apiMsg.includes('quota') || apiMsg.includes('exceeded')) {
+        msg = 'OpenAI quota exceeded — add credits at platform.openai.com/settings/billing';
+      } else if (apiMsg.includes('401') || apiMsg.includes('Incorrect API key')) {
+        msg = 'Invalid OpenAI API key — check OPENAI_API_KEY in brain .env';
+      }
       setError(msg);
       Alert.alert('Error', msg);
     } finally {
@@ -48,7 +70,7 @@ const ProposalSheet = forwardRef(({ jobId, initialProposal }, ref) => {
     if (!proposal) return;
     await Clipboard.setStringAsync(proposal);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -57,77 +79,88 @@ const ProposalSheet = forwardRef(({ jobId, initialProposal }, ref) => {
       index={-1}
       snapPoints={snapPoints}
       enablePanDownToClose
+      keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
+      android_keyboardInputMode="adjustResize"
       backgroundStyle={styles.sheetBg}
       handleIndicatorStyle={styles.handle}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>Generate Proposal</Text>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>✍️ Generated Proposal</Text>
+          <Text style={styles.subtle}>{proposal.length} chars · editable</Text>
+        </View>
 
-      {/* Type selector */}
-      <View style={styles.typeRow}>
-        {TYPES.map((t) => (
-          <TouchableOpacity
-            key={t.value}
-            style={[styles.typeBtn, selectedType === t.value && styles.typeBtnActive]}
-            onPress={() => setSelectedType(t.value)}
-          >
-            <Text style={[styles.typeBtnText, selectedType === t.value && styles.typeBtnTextActive]}>
-              {t.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        {/* Type selector */}
+        <View style={styles.typeRow}>
+          {TYPES.map((t) => (
+            <TouchableOpacity
+              key={t.value}
+              style={[styles.typeBtn, selectedType === t.value && styles.typeBtnActive]}
+              onPress={() => setSelectedType(t.value)}
+            >
+              <Text style={[styles.typeBtnText, selectedType === t.value && styles.typeBtnTextActive]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <BottomSheetScrollView contentContainerStyle={styles.content}>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <BottomSheetScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {proposal ? (
-          <View style={styles.proposalBox}>
-            <Text style={styles.proposalText} selectable>
-              {proposal}
-            </Text>
-          </View>
-        ) : !loading ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={48} color={COLORS.muted} />
-            <Text style={styles.emptyText}>
-              Tap "Generate" to create a proposal for this job.
-            </Text>
-          </View>
-        ) : null}
-
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.loadingText}>Generating proposal...</Text>
-          </View>
-        ) : null}
-      </BottomSheetScrollView>
-
-      <View style={styles.actions}>
-        {proposal ? (
-          <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
-            <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color={COLORS.primary} />
-            <Text style={styles.copyBtnText}>{copied ? 'Copied!' : 'Copy'}</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        <TouchableOpacity
-          style={[styles.generateBtn, loading && styles.generateBtnDisabled]}
-          onPress={handleGenerate}
-          disabled={loading}
-        >
           {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Generating proposal…</Text>
+            </View>
+          ) : proposal ? (
+            <TextInput
+              style={styles.input}
+              value={proposal}
+              onChangeText={updateProposal}
+              multiline
+              textAlignVertical="top"
+              placeholder="Proposal will appear here…"
+              placeholderTextColor={COLORS.muted}
+            />
           ) : (
-            <>
-              <Ionicons name={proposal ? 'refresh' : 'sparkles'} size={16} color="#fff" />
-              <Text style={styles.generateBtnText}>{proposal ? 'Regenerate' : 'Generate'}</Text>
-            </>
+            <View style={styles.emptyState}>
+              <Ionicons name="document-text-outline" size={48} color={COLORS.muted} />
+              <Text style={styles.emptyText}>
+                Pick a type above and tap Generate to create a proposal for this job.
+              </Text>
+            </View>
           )}
-        </TouchableOpacity>
-      </View>
+        </BottomSheetScrollView>
+
+        <View style={styles.actions}>
+          {proposal ? (
+            <TouchableOpacity style={styles.copyBtn} onPress={handleCopy}>
+              <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={16} color={COLORS.primary} />
+              <Text style={styles.copyBtnText}>{copied ? 'Copied!' : 'Copy'}</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          <TouchableOpacity
+            style={[styles.generateBtn, loading && styles.generateBtnDisabled]}
+            onPress={handleGenerate}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name={proposal ? 'refresh' : 'sparkles'} size={16} color="#fff" />
+                <Text style={styles.generateBtnText}>{proposal ? 'Regenerate' : 'Generate'}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </BottomSheet>
   );
 });
@@ -138,17 +171,16 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 4,
-    paddingBottom: 12,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   title: { fontSize: 17, fontWeight: '700', color: COLORS.textPrimary },
-  typeRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-  },
+  subtle: { fontSize: 11, color: COLORS.muted },
+  typeRow: { flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 10, gap: 8 },
   typeBtn: {
     flex: 1,
     paddingVertical: 8,
@@ -158,34 +190,24 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.background,
   },
-  typeBtnActive: {
-    backgroundColor: COLORS.primary + '15',
-    borderColor: COLORS.primary,
-  },
+  typeBtnActive: { backgroundColor: COLORS.primary + '15', borderColor: COLORS.primary },
   typeBtnText: { fontSize: 13, fontWeight: '500', color: COLORS.textSecondary },
   typeBtnTextActive: { color: COLORS.primary, fontWeight: '700' },
-  content: { paddingHorizontal: 20, paddingBottom: 20, minHeight: 200 },
+  content: { paddingHorizontal: 20, paddingBottom: 20, minHeight: 220 },
   errorText: { color: COLORS.danger, marginBottom: 12, fontSize: 13 },
-  proposalBox: {
+  input: {
+    minHeight: 280,
     backgroundColor: COLORS.background,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
-  },
-  proposalText: {
     fontSize: 14,
     color: COLORS.textPrimary,
     lineHeight: 22,
   },
   emptyState: { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  emptyText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 21,
-    maxWidth: 260,
-  },
+  emptyText: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 21, maxWidth: 260 },
   loadingBox: { alignItems: 'center', paddingVertical: 40, gap: 12 },
   loadingText: { fontSize: 14, color: COLORS.textSecondary },
   actions: {

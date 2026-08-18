@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 import { API_BASE_URL, SOCKET_PATH } from '../constants/config';
 import useAuthStore from '../store/authStore';
 
-const useSocket = ({ onBotHeartbeat, onBotStatusChanging } = {}) => {
+const useSocket = ({ onBotHeartbeat, onBotStatusChanging, onBotCommandAck, onJobNew } = {}) => {
   const socketRef = useRef(null);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -40,6 +40,14 @@ const useSocket = ({ onBotHeartbeat, onBotStatusChanging } = {}) => {
 
     if (onBotStatusChanging) {
       socket.on('bot:status_changing', onBotStatusChanging);
+    }
+
+    if (onBotCommandAck) {
+      socket.on('bot:command_ack', onBotCommandAck);
+    }
+
+    if (onJobNew) {
+      socket.on('job:new', onJobNew);
     }
 
     return () => {

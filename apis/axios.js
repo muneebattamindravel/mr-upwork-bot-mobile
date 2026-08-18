@@ -44,6 +44,10 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // Skip refresh for auth endpoints — pass through the original error
+      const isAuthEndpoint = originalRequest.url?.includes('/auth/');
+      if (isAuthEndpoint) return Promise.reject(error);
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -60,13 +64,18 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
+        const userId = await SecureStore.getItemAsync('userId');
+        if (!refreshToken || !userId) throw new Error('No refresh token');
 
         const res = await axios.post(`${API_BASE_URL}${API_PREFIX}/auth/refresh`, {
           refreshToken,
+          userId,
         });
 
-        const { accessToken } = res.data.data;
+        const { accessToken, refreshToken: newRefreshToken, userId: newUserId } = res.data.data;
+        // Save rotated tokens
+        await SecureStore.setItemAsync('refreshToken', newRefreshToken);
+        if (newUserId) await SecureStore.setItemAsync('userId', newUserId);
         useAuthStore.getState().setTokens(accessToken);
 
         processQueue(null, accessToken);
@@ -76,6 +85,7 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         // Clear tokens and redirect to login
         await SecureStore.deleteItemAsync('refreshToken');
+        await SecureStore.deleteItemAsync('userId');
         useAuthStore.getState().clearTokens();
         return Promise.reject(refreshError);
       } finally {

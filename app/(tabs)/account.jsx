@@ -12,11 +12,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/config';
 import useAuth from '../../hooks/useAuth';
 
-const getInitials = (email) => {
-  if (!email) return '?';
-  const parts = email.split('@')[0].split(/[._-]/);
+const getInitials = (username) => {
+  if (!username) return '?';
+  // Split on word boundaries (underscore, dot, dash, camelCase)
+  const parts = username.split(/[._\-\s]+/);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return email.slice(0, 2).toUpperCase();
+  return username.slice(0, 2).toUpperCase();
 };
 
 const RoleBadge = ({ role }) => {
@@ -82,22 +83,22 @@ export default function AccountScreen() {
         {/* Avatar */}
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{getInitials(user?.email)}</Text>
+            <Text style={styles.avatarText}>{getInitials(user?.username)}</Text>
           </View>
           {user?.role ? <RoleBadge role={user.role} /> : null}
         </View>
 
         {/* User info card */}
         <View style={styles.infoCard}>
-          <InfoRow icon="mail-outline" label="Email" value={user?.email} />
+          <InfoRow icon="person-outline" label="Username" value={user?.username} />
+          <View style={styles.separator} />
+          <InfoRow icon="text-outline" label="Name" value={user?.name} />
           <View style={styles.separator} />
           <InfoRow
             icon="shield-outline"
             label="Role"
-            value={user?.role === 'superAdmin' ? 'Super Admin' : 'Admin'}
+            value={user?.role === 'superAdmin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : 'User'}
           />
-          <View style={styles.separator} />
-          <InfoRow icon="finger-print-outline" label="User ID" value={user?._id} />
         </View>
 
         {/* App info */}
