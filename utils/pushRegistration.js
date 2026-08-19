@@ -3,22 +3,19 @@
 // (`getDevicePushTokenAsync`) so the token we send to brain is the raw
 // APNs/FCM token — brain then talks to Apple/Google itself.
 //
-// Native modules involved (both need to be bundled — safe-required so the
-// app still boots without them on legacy builds):
+// Native module involved (safe-required so the app still boots without it
+// on legacy builds):
 //   - expo-notifications
-//   - expo-device
 //
 // This runs at most once per app launch after login. It is a no-op on
-// simulators (no push support) and on web.
+// simulators (getDevicePushTokenAsync throws there — we catch it) and on web.
 
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { registerPushToken } from '../apis/auth';
 
 let Notifications = null;
-let Device = null;
 try { Notifications = require('expo-notifications'); } catch { /* not installed yet */ }
-try { Device        = require('expo-device');        } catch { /* not installed yet */ }
 
 let alreadyRegisteredThisSession = false;
 
@@ -43,13 +40,9 @@ export const configureNotificationHandler = () => {
 export const registerForPushNotifications = async () => {
   if (alreadyRegisteredThisSession) return { skipped: true, reason: 'already-registered' };
   if (Platform.OS === 'web') return { skipped: true, reason: 'web' };
-  if (!Notifications || !Device) {
-    console.warn('[Push] expo-notifications/expo-device not installed — skipping registration');
-    return { skipped: true, reason: 'native-modules-missing' };
-  }
-  if (!Device.isDevice) {
-    // Simulators can't receive real push notifications
-    return { skipped: true, reason: 'simulator' };
+  if (!Notifications) {
+    console.warn('[Push] expo-notifications not installed — skipping registration');
+    return { skipped: true, reason: 'native-module-missing' };
   }
 
   try {

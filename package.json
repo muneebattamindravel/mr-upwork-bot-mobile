@@ -15,7 +15,6 @@
     "axios": "^1.6.8",
     "expo": "~51.0.39",
     "expo-clipboard": "~6.0.3",
-    "expo-device": "~6.0.2",
     "expo-haptics": "~13.0.1",
     "expo-linking": "~6.3.1",
     "expo-notifications": "~0.28.19",
