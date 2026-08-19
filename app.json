@@ -16,10 +16,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.mindravel.mrupworkbot",
       "entitlements": {
-        "aps-environment": "production"
+        "aps-environment": "development"
       },
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": ["remote-notification"],
+        "NSLocalNetworkUsageDescription": "MR Upwork Bot connects to the local Metro bundler while running debug builds from Xcode.",
+        "NSBonjourServices": ["_expo-metro._tcp", "_dartobservatory._tcp"]
       }
     },
     "android": {
